@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { IconRefreshCw } from '@/components/ui/icons';
 import { useCountUp } from '@/hooks/motion';
+import { QUOTA_AUTO_REFRESH_INTERVAL_MS } from '../constants';
 import styles from './QuotaHeader.module.scss';
 
 export type QuotaHeaderProps = {
@@ -52,6 +53,14 @@ export function QuotaHeader(props: QuotaHeaderProps) {
               </span>
             </>
           )}
+          <span className={styles.metaDot} aria-hidden="true">
+            ·
+          </span>
+          <span className={styles.metaMuted}>
+            {t('quota_management.auto_refresh', {
+              seconds: QUOTA_AUTO_REFRESH_INTERVAL_MS / 1000,
+            })}
+          </span>
         </p>
       </div>
       <div className={styles.actions} data-reveal>

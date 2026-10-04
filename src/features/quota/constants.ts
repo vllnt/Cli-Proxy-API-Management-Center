@@ -16,6 +16,9 @@ export type QuotaTabId = 'all' | QuotaProviderType;
 /** 页级分页固定 20/页，同时把「刷新全部」的上游并发限制在 20。 */
 export const QUOTA_PAGE_SIZE = 20;
 
+/** Automatic quota refresh cadence for the visible quota page. */
+export const QUOTA_AUTO_REFRESH_INTERVAL_MS = 60_000;
+
 /** 卡片排序：默认 = provider 分组序；soonest = 最快恢复优先。 */
 export const QUOTA_SORT_MODES = ['default', 'soonest'] as const;
 

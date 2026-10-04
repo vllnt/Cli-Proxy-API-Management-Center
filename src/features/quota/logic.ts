@@ -88,7 +88,7 @@ export function filterEntriesBySearch(entries: QuotaFileEntry[], search: string)
  * upcoming reset — sink to the bottom rather than sorting as "now". They keep
  * their incoming provider-grouped order, so the unloaded tail still reads like
  * the default view instead of an arbitrary shuffle. Because loading is
- * click-to-fetch, that tail is most of the list until the user asks for data.
+ * automatic page refresh, that tail is only temporarily unresolved while the batch runs.
  *
  * The original index is the final tiebreak, making stability an asserted
  * property rather than an assumption about the engine's sort.
