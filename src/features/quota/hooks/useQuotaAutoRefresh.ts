@@ -1,13 +1,20 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getQuotaCacheKey } from '@/utils/quota/identity';
 import type { QuotaFileEntry } from '../logic';
 import { QUOTA_AUTO_REFRESH_INTERVAL_MS } from '../constants';
 
-export type LoadQuota = (targets: QuotaFileEntry[]) => Promise<void>;
+export interface LoadQuotaOptions {
+  /** Keep already rendered quota content visible during a background refresh. */
+  preserveExisting?: boolean;
+}
+
+export type LoadQuota = (targets: QuotaFileEntry[], options?: LoadQuotaOptions) => Promise<void>;
 
 export interface QuotaAutoRefreshSchedulerOptions {
   intervalMs?: number;
   isHidden?: () => boolean;
+  now?: () => number;
+  onNextRefreshAt?: (timestamp: number) => void;
   setInterval?: (callback: () => void, delay: number) => unknown;
   clearInterval?: (id: unknown) => void;
   subscribeVisibility?: (listener: () => void) => () => void;
@@ -19,8 +26,7 @@ const defaultIsHidden = () =>
 const defaultSetInterval = (callback: () => void, delay: number) =>
   window.setInterval(callback, delay);
 
-const defaultClearInterval = (id: unknown) =>
-  window.clearInterval(id as number);
+const defaultClearInterval = (id: unknown) => window.clearInterval(id as number);
 
 const defaultSubscribeVisibility = (listener: () => void) => {
   document.addEventListener('visibilitychange', listener);
@@ -29,11 +35,13 @@ const defaultSubscribeVisibility = (listener: () => void) => {
 
 /** Build a stable identity for the current visible cards, independent of sort order. */
 export const getQuotaAutoRefreshSignature = (targets: QuotaFileEntry[]): string =>
-  JSON.stringify(
-    targets
-      .map(({ type, file }) => `${type}:${getQuotaCacheKey(file)}`)
-      .sort()
-  );
+  JSON.stringify(targets.map(({ type, file }) => `${type}:${getQuotaCacheKey(file)}`).sort());
+
+export const getQuotaRefreshSecondsRemaining = (
+  nextRefreshAt: number | null,
+  now: number
+): number | null =>
+  nextRefreshAt === null ? null : Math.max(0, Math.ceil((nextRefreshAt - now) / 1000));
 
 /**
  * Run one refresh immediately, then on a single interval while the page is visible.
@@ -46,6 +54,8 @@ export function createQuotaAutoRefreshScheduler(
   const {
     intervalMs = QUOTA_AUTO_REFRESH_INTERVAL_MS,
     isHidden = defaultIsHidden,
+    now = Date.now,
+    onNextRefreshAt,
     setInterval: schedule = defaultSetInterval,
     clearInterval: clear = defaultClearInterval,
     subscribeVisibility = defaultSubscribeVisibility,
@@ -54,6 +64,7 @@ export function createQuotaAutoRefreshScheduler(
 
   const run = () => {
     if (!active || isHidden()) return;
+    onNextRefreshAt?.(now() + intervalMs);
     refresh();
   };
 
@@ -79,6 +90,8 @@ export function useQuotaAutoRefresh(
   const targetsRef = useRef(targets);
   const loadQuotaRef = useRef(loadQuota);
   const targetSignature = useMemo(() => getQuotaAutoRefreshSignature(targets), [targets]);
+  const [nextRefreshAt, setNextRefreshAt] = useState<number | null>(null);
+  const [countdownNow, setCountdownNow] = useState(() => Date.now());
 
   useEffect(() => {
     targetsRef.current = targets;
@@ -89,10 +102,30 @@ export function useQuotaAutoRefresh(
   }, [loadQuota]);
 
   useEffect(() => {
-    if (disabled || !targetSignature) return;
+    if (disabled || !targetSignature) {
+      setNextRefreshAt(null);
+      return;
+    }
 
-    return createQuotaAutoRefreshScheduler(() => {
-      void loadQuotaRef.current(targetsRef.current);
-    });
+    const countdownTimer = window.setInterval(() => {
+      setCountdownNow(Date.now());
+    }, 1000);
+    const dispose = createQuotaAutoRefreshScheduler(
+      () => {
+        void loadQuotaRef.current(targetsRef.current, { preserveExisting: true });
+      },
+      { onNextRefreshAt: setNextRefreshAt }
+    );
+
+    return () => {
+      window.clearInterval(countdownTimer);
+      dispose();
+    };
   }, [disabled, targetSignature]);
+
+  return {
+    secondsUntilRefresh: disabled
+      ? null
+      : getQuotaRefreshSecondsRemaining(nextRefreshAt, countdownNow),
+  };
 }

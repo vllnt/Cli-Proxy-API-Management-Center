@@ -13,7 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { captureQuotaCacheGeneration, commitIfQuotaCacheCurrent } from '@/stores';
 import { getStatusFromError } from '@/utils/quota';
 import { getQuotaCacheKey } from '@/utils/quota/identity';
-import type { QuotaFileEntry } from '../logic';
+import { shouldKeepQuotaContentDuringRefresh, type QuotaFileEntry } from '../logic';
+import type { LoadQuotaOptions } from './useQuotaAutoRefresh';
 import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from '../providers';
 import { enrichQuotaInBackground } from '../quotaEnrichment';
 import type { QuotaProviderType } from '../providers/types';
@@ -34,11 +35,12 @@ export function useQuotaBatchLoader() {
   const requestIdRef = useRef(0);
 
   const loadQuota = useCallback(
-    async (targets: QuotaFileEntry[]) => {
+    async (targets: QuotaFileEntry[], options: LoadQuotaOptions = {}) => {
       if (loadingRef.current) return;
       if (targets.length === 0) return;
       loadingRef.current = true;
       const requestId = ++requestIdRef.current;
+      const { preserveExisting = false } = options;
       const cacheGeneration = captureQuotaCacheGeneration();
       setBatchLoading(true);
 
@@ -59,7 +61,13 @@ export function useQuotaBatchLoader() {
               setQuota((prev) => {
                 const nextState = { ...prev };
                 entries.forEach(({ file }) => {
-                  nextState[getQuotaCacheKey(file)] = adapter.buildLoadingState();
+                  const cacheKey = getQuotaCacheKey(file);
+                  const current = prev[cacheKey];
+                  const keepVisible = shouldKeepQuotaContentDuringRefresh(
+                    current?.status,
+                    preserveExisting
+                  );
+                  if (!keepVisible) nextState[cacheKey] = adapter.buildLoadingState();
                 });
                 return nextState;
               });

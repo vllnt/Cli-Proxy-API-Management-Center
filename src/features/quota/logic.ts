@@ -42,6 +42,14 @@ export function canRefreshQuotaAfterList(
   );
 }
 
+/** Keep settled card content mounted while a background refresh is in flight. */
+export function shouldKeepQuotaContentDuringRefresh(
+  status: 'idle' | 'loading' | 'success' | 'error' | undefined,
+  preserveExisting: boolean
+): boolean {
+  return preserveExisting && (status === 'success' || status === 'error');
+}
+
 export const resolveQuotaProviderType = (file: AuthFileItem): QuotaProviderType | null =>
   QUOTA_TAB_ORDER.find((type) => QUOTA_FILTER_MAP[type](file)) ?? null;
 

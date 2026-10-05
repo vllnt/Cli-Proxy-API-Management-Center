@@ -24,6 +24,36 @@ export function maskApiKey(key: string): string {
   return `${start}${masked}${end}`;
 }
 
+/** Hide email local parts and domain characters while preserving their shape. */
+export function maskEmailText(value: string, knownEmails: readonly string[] = []): string {
+  const maskToken = (token: string): string => {
+    const trailingPunctuation = token.match(/[),.;:!?]+$/)?.[0] ?? '';
+    const email = trailingPunctuation ? token.slice(0, -trailingPunctuation.length) : token;
+    const atIndex = email.lastIndexOf('@');
+    if (atIndex <= 0 || atIndex === email.length - 1) return token;
+
+    const maskPart = (part: string) =>
+      [...part].map((character) => (character === '.' ? '.' : '*')).join('');
+    return (
+      `${maskPart(email.slice(0, atIndex))}@` +
+      `${maskPart(email.slice(atIndex + 1))}${trailingPunctuation}`
+    );
+  };
+  const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  let masked = String(value || '');
+  [...new Set(knownEmails.map((email) => email.trim()).filter(Boolean))]
+    .sort((left, right) => right.length - left.length)
+    .forEach((email) => {
+      masked = masked.replace(new RegExp(escapeRegex(email), 'gi'), maskToken(email));
+    });
+
+  return masked.replace(
+    /[A-Za-z0-9.!#$%&'*+\x2f=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g,
+    maskToken
+  );
+}
+
 /**
  * 格式化文件大小
  */

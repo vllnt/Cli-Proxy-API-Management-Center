@@ -9,6 +9,7 @@ import {
   isQuotaRefreshDisabled,
   paginate,
   resolveQuotaProviderType,
+  shouldKeepQuotaContentDuringRefresh,
   sortQuotaEntries,
   type QuotaFileEntry,
 } from '@/features/quota/logic';
@@ -147,6 +148,15 @@ describe('isQuotaRefreshDisabled', () => {
   test('blocks a single-card refresh while the same quota is resetting', () => {
     expect(isQuotaRefreshDisabled(true, false, true)).toBe(true);
     expect(isQuotaRefreshDisabled(true, false, false)).toBe(false);
+  });
+});
+
+describe('background quota refresh', () => {
+  test('keeps settled content mounted but still loads idle cards', () => {
+    expect(shouldKeepQuotaContentDuringRefresh('success', true)).toBe(true);
+    expect(shouldKeepQuotaContentDuringRefresh('error', true)).toBe(true);
+    expect(shouldKeepQuotaContentDuringRefresh('idle', true)).toBe(false);
+    expect(shouldKeepQuotaContentDuringRefresh('success', false)).toBe(false);
   });
 });
 
