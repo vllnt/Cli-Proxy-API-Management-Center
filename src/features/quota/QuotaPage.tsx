@@ -278,12 +278,9 @@ export function QuotaPage() {
     }
   }, [disableControls, error, filesGeneration, loading, loadQuota, pageItems, sessionGeneration]);
 
-  useQuotaAutoRefresh(
+  const { secondsUntilRefresh } = useQuotaAutoRefresh(
     pageItems,
-    disableControls ||
-      loading ||
-      Boolean(error) ||
-      filesGeneration !== sessionGeneration,
+    disableControls || loading || Boolean(error) || filesGeneration !== sessionGeneration,
     loadQuota
   );
 
@@ -318,6 +315,7 @@ export function QuotaPage() {
         loadedCount={loadedCount}
         attentionCount={attentionCount}
         refreshing={loading || batchLoading}
+        secondsUntilRefresh={secondsUntilRefresh}
         disableControls={disableControls}
         onRefreshAll={handleRefreshAll}
       />

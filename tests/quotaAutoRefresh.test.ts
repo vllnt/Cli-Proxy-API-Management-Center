@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import {
   createQuotaAutoRefreshScheduler,
   getQuotaAutoRefreshSignature,
+  getQuotaRefreshSecondsRemaining,
 } from '@/features/quota/hooks/useQuotaAutoRefresh';
 import { QUOTA_AUTO_REFRESH_INTERVAL_MS } from '@/features/quota/constants';
 import type { QuotaFileEntry } from '@/features/quota/logic';
@@ -19,6 +20,7 @@ describe('quota auto-refresh scheduler', () => {
     let timer: (() => void) | null = null;
     let visibilityListener: (() => void) | null = null;
     let cleared = false;
+    let nextRefreshAt: number | null = null;
     let calls = 0;
 
     const dispose = createQuotaAutoRefreshScheduler(
@@ -27,6 +29,10 @@ describe('quota auto-refresh scheduler', () => {
       },
       {
         isHidden: () => hidden,
+        now: () => 1_000,
+        onNextRefreshAt: (timestamp) => {
+          nextRefreshAt = timestamp;
+        },
         setInterval: (callback, delay) => {
           expect(delay).toBe(QUOTA_AUTO_REFRESH_INTERVAL_MS);
           timer = callback;
@@ -46,8 +52,10 @@ describe('quota auto-refresh scheduler', () => {
     );
 
     expect(calls).toBe(1);
+    expect(nextRefreshAt).toBe(1_000 + QUOTA_AUTO_REFRESH_INTERVAL_MS);
     timer?.();
     expect(calls).toBe(2);
+    expect(nextRefreshAt).toBe(1_000 + QUOTA_AUTO_REFRESH_INTERVAL_MS);
 
     hidden = true;
     timer?.();
@@ -76,13 +84,23 @@ describe('quota auto-refresh scheduler', () => {
   });
 });
 
+describe('quota auto-refresh countdown', () => {
+  test('rounds up remaining seconds and clamps expired deadlines', () => {
+    expect(getQuotaRefreshSecondsRemaining(61_000, 1_000)).toBe(60);
+    expect(getQuotaRefreshSecondsRemaining(61_000, 2_001)).toBe(59);
+    expect(getQuotaRefreshSecondsRemaining(1_000, 2_000)).toBe(0);
+    expect(getQuotaRefreshSecondsRemaining(null, 2_000)).toBeNull();
+  });
+});
+
 describe('quota auto-refresh translations', () => {
   for (const locale of ['en', 'zh-CN', 'zh-TW', 'ru']) {
     test(`${locale} explains the automatic cadence`, () => {
-      const messages = JSON.parse(
-        readFileSync(`src/i18n/locales/${locale}.json`, 'utf8')
-      ) as { quota_management?: { auto_refresh?: string } };
+      const messages = JSON.parse(readFileSync(`src/i18n/locales/${locale}.json`, 'utf8')) as {
+        quota_management?: { auto_refresh?: string; auto_refresh_next?: string };
+      };
       expect(messages.quota_management?.auto_refresh).toBeTruthy();
+      expect(messages.quota_management?.auto_refresh_next).toBeTruthy();
     });
   }
 });
