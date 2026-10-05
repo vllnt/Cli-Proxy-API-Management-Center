@@ -5,7 +5,7 @@ panel. The panel is still bundled into the CLIProxy backend image; Coolify
 builds the single-file UI from this repository and overlays it onto a pinned,
 private backend image.
 
-Coolify must provide `CLIPROXY_BASE_IMAGE` as a private application variable
+Coolify must provide `CLIPROXY_IMAGE_REF` as a private application variable
 available at build time. Keep the full registry reference and digest in
 Coolify, never in this public repository. The Compose file reuses the existing
 private state, TLS, operations and backup mounts, so only one of the legacy
