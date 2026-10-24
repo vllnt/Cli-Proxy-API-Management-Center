@@ -1,6 +1,7 @@
 import { describe, expect, spyOn, test } from 'bun:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { I18nextProvider } from 'react-i18next';
 import i18n from '../src/i18n/index';
 import { authFilesApi, normalizeAuthFilesResponse } from '../src/services/api/authFiles';
 import { normalizeAuthFileCooldowns } from '../src/services/api/authFileCooldowns';
@@ -27,10 +28,20 @@ const modelRecord = {
 const normalize = (value: unknown) => normalizeAuthFileCooldowns(value, observedAt, receivedAtMs);
 const snapshot = normalize([modelRecord])!;
 const record = snapshot.records![0];
+const translations = i18n.cloneInstance({ lng: 'en' });
+const text = (key: string) =>
+  renderToStaticMarkup(createElement('span', null, translations.t(key))).slice(6, -7);
 const render = (
   value?: AuthFileCooldownSnapshot,
   options: { resetting?: boolean; resetDisabled?: boolean; onReset?: () => void } = {}
-) => renderToStaticMarkup(createElement(AuthFileCooldownSection, { snapshot: value, ...options }));
+) =>
+  renderToStaticMarkup(
+    createElement(
+      I18nextProvider,
+      { i18n: translations },
+      createElement(AuthFileCooldownSection, { snapshot: value, ...options })
+    )
+  );
 
 function response(files: Record<string, unknown>[]): AuthFilesResponse {
   return { observed_at: observedAt, files } as unknown as AuthFilesResponse;
@@ -205,7 +216,7 @@ describe('cooldown section rendering', () => {
   test('does not add a panel for old servers or known-empty state', () => {
     expect(render()).toBe('');
     expect(render(normalize([]))).toBe('');
-    expect(render(normalize(null))).toContain(i18n.t('auth_files.cooldown_unknown'));
+    expect(render(normalize(null))).toContain(text('auth_files.cooldown_unknown'));
   });
 
   test('offers native keyboard-accessible disclosure with scope, reason and deadline', () => {
@@ -214,18 +225,18 @@ describe('cooldown section rendering', () => {
     expect(markup).toContain('<summary');
     expect(markup).not.toContain(' open=""');
     expect(markup).toContain('model-a');
-    expect(markup).toContain(i18n.t('auth_files.cooldown_reason_quota'));
+    expect(markup).toContain(text('auth_files.cooldown_reason_quota'));
     expect(markup).toContain('429');
     expect(markup).toContain('dateTime="2026-07-17T10:00:32.000Z"');
-    expect(markup).toContain(i18n.t('auth_files.cooldown_note'));
+    expect(markup).toContain(text('auth_files.cooldown_note'));
   });
 
   test('keeps the reset action contextual and exposes pending state', () => {
-    expect(render(snapshot)).not.toContain(i18n.t('auth_files.cooldown_reset_button'));
+    expect(render(snapshot)).not.toContain(text('auth_files.cooldown_reset_button'));
 
     const available = render(snapshot, { onReset: () => {} });
-    expect(available).toContain(i18n.t('auth_files.cooldown_reset_button'));
-    expect(available).toContain(i18n.t('auth_files.cooldown_reset_hint'));
+    expect(available).toContain(text('auth_files.cooldown_reset_button'));
+    expect(available).toContain(text('auth_files.cooldown_reset_hint'));
     expect(available).not.toContain('disabled=""');
 
     const pending = render(snapshot, { onReset: () => {}, resetting: true });
@@ -235,8 +246,8 @@ describe('cooldown section rendering', () => {
 
   test('shows elapsed / refresh confirmation and safely escapes model keys', () => {
     const expired = { ...snapshot, receivedAtMs: receivedAtMs - 100_000 };
-    expect(render(expired)).toContain(i18n.t('auth_files.cooldown_elapsed'));
-    expect(render(expired)).toContain(i18n.t('auth_files.cooldown_refresh_hint'));
+    expect(render(expired)).toContain(text('auth_files.cooldown_elapsed'));
+    expect(render(expired)).toContain(text('auth_files.cooldown_refresh_hint'));
     const markup = render(normalize([{ ...modelRecord, model_key: '<script>example</script>' }]));
     expect(markup).not.toContain('<script>');
     expect(markup).toContain('&lt;script&gt;');
