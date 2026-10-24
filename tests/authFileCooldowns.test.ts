@@ -30,13 +30,7 @@ const snapshot = normalize([modelRecord])!;
 const record = snapshot.records![0];
 const translations = i18n.cloneInstance({ lng: 'en' });
 const text = (key: string) =>
-  translations
-    .t(key)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#x27;');
+  renderToStaticMarkup(createElement('span', null, translations.t(key))).slice(6, -7);
 const render = (
   value?: AuthFileCooldownSnapshot,
   options: { resetting?: boolean; resetDisabled?: boolean; onReset?: () => void } = {}
