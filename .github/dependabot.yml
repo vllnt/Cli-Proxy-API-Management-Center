@@ -1,0 +1,8 @@
+version: 2
+updates:
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    # Security updates only: 0 turns off version update pull requests.
+    open-pull-requests-limit: 0
