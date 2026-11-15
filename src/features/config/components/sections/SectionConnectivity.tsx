@@ -13,7 +13,7 @@ import {
   FieldStack,
   ToggleRow,
 } from '../fields/FieldPrimitives';
-import { ApiKeysField, HostField, PortField } from '../fields/sharedFields';
+import { ApiKeyBudgetsField, ApiKeysField, HostField, PortField } from '../fields/sharedFields';
 import { getValidationMessage } from '../blocks/shared';
 
 import { StringListEditor } from '../blocks/StringListEditor';
@@ -60,6 +60,7 @@ export function SectionConnectivity({
         </FieldAnchor>
 
         <ApiKeysField values={values} disabled={disabled} onChange={onChange} />
+        <ApiKeyBudgetsField values={values} disabled={disabled} onChange={onChange} />
 
         <FieldAnchor fieldId="trustedProxies">
           <FieldShell

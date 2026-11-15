@@ -14,6 +14,7 @@ export type CodexLiveICEServerDraft = {
 };
 
 export type VisualConfigFieldPath =
+  | 'apiKeyBudgets'
   | 'trustedProxies'
   | 'discoveryServiceType'
   | 'transientErrorCooldownSeconds'
@@ -40,6 +41,7 @@ export type VisualConfigFieldPath =
   | 'streaming.nonstreamKeepaliveInterval';
 
 export type VisualConfigValidationErrorCode =
+  | 'invalid_api_key_budgets'
   | 'invalid_trusted_proxies'
   | 'invalid_discovery_service_type'
   | 'invalid_duration'
@@ -115,6 +117,46 @@ export type PluginStoreAuthRule = {
   allowInsecure: boolean;
 };
 
+export type ApiKeyBudgetRuleDraft = {
+  id: string;
+  models: string;
+  window: string;
+  limit: string;
+  /** Empty inherits the global mode. */
+  mode: string;
+};
+
+export type ApiKeyBudgetEntryDraft = {
+  id: string;
+  label: string;
+  /** Full client key, held in memory only. The UI renders it masked. */
+  key: string;
+  /** The label already maps a key in access.api-key-labels, so label and key are fixed. */
+  saved: boolean;
+  rules: ApiKeyBudgetRuleDraft[];
+};
+
+export type ApiKeyBudgetWeightsDraft = {
+  input: string;
+  output: string;
+  cacheWrite: string;
+  cacheRead: string;
+};
+
+/** access.api-key-budgets plus the label tables its entries depend on. */
+export type ApiKeyBudgetsDraft = {
+  /** The access.api-key-budgets block exists. Off deletes the whole block. */
+  enabled: boolean;
+  mode: string;
+  timezone: string;
+  weights: ApiKeyBudgetWeightsDraft;
+  entries: ApiKeyBudgetEntryDraft[];
+  /** Read-only context: access.api-key-labels (label to key). */
+  labels: Record<string, string>;
+  /** Read-only context: labels that have an access.api-key-auth-allowlist entry. */
+  allowlistLabels: string[];
+};
+
 /** UI draft keys; YAML persistence uses the v8 tree, not these flattened names. */
 export type VisualConfigValues = {
   trustedProxies: string[];
@@ -166,6 +208,7 @@ export type VisualConfigValues = {
   authDir: string;
   /** Client authentication keys at access.api-keys (never the upstream api-keys map). */
   apiKeysText: string;
+  apiKeyBudgets: ApiKeyBudgetsDraft;
   pluginsEnabled: boolean;
   pluginStoreSources: string[];
   pluginStoreAuth: PluginStoreAuthRule[];
@@ -269,6 +312,15 @@ export const DEFAULT_VISUAL_VALUES: VisualConfigValues = {
   rmPanelRepo: '',
   authDir: '',
   apiKeysText: '',
+  apiKeyBudgets: {
+    enabled: false,
+    mode: 'observe',
+    timezone: '',
+    weights: { input: '', output: '', cacheWrite: '', cacheRead: '' },
+    entries: [],
+    labels: {},
+    allowlistLabels: [],
+  },
   pluginsEnabled: false,
   pluginStoreSources: [],
   pluginStoreAuth: [],

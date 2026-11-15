@@ -51,6 +51,7 @@ describe('server configuration UI', () => {
       'port',
       'trustedProxies',
       'discoveryServiceType',
+      'apiKeyBudgets',
     ]);
   });
 

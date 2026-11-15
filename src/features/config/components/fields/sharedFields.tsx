@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { Input } from '@/components/ui/Input';
 import type { VisualConfigValues } from '@/types/visualConfig';
 import { SPONSORS } from '../../sponsors';
+import { ApiKeyBudgetsEditor } from '../blocks/ApiKeyBudgetsEditor';
 import { ApiKeysCardEditor } from '../blocks/ApiKeysCardEditor';
 import { FieldAnchor, FieldGroup, ToggleRow } from './FieldPrimitives';
 import fieldStyles from './Field.module.scss';
@@ -116,6 +117,21 @@ export function ApiKeysField({ values, disabled, onChange }: SharedFieldProps) {
           value={values.apiKeysText}
           disabled={disabled}
           onChange={(apiKeysText) => onChange({ apiKeysText })}
+        />
+      </FieldGroup>
+    </FieldAnchor>
+  );
+}
+
+export function ApiKeyBudgetsField({ values, disabled, onChange }: SharedFieldProps) {
+  return (
+    <FieldAnchor fieldId="apiKeyBudgets">
+      <FieldGroup>
+        <ApiKeyBudgetsEditor
+          value={values.apiKeyBudgets}
+          apiKeysText={values.apiKeysText}
+          disabled={disabled}
+          onChange={(apiKeyBudgets) => onChange({ apiKeyBudgets })}
         />
       </FieldGroup>
     </FieldAnchor>

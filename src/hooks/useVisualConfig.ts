@@ -26,6 +26,14 @@ import {
   writeICEServers,
   validateVisualAdditions,
 } from '@/features/config/visualConfigAdditions';
+import {
+  areApiKeyBudgetsEqual,
+  hasApiKeyBudgetIssues,
+  readApiKeyBudgets,
+  splitApiKeys,
+  validateApiKeyBudgets,
+  writeApiKeyBudgets,
+} from '@/features/config/apiKeyBudgets';
 
 import {
   SERVER_FIELDS,
@@ -183,6 +191,19 @@ function getRedisRetentionError(value: string): 'integer_range_1_3600' | undefin
   return parsed >= 1 && parsed <= 3600 ? undefined : 'integer_range_1_3600';
 }
 
+// Only checked while edited: the server already vetted what it sent, and the zone check is
+// an approximation that must not block unrelated saves. Removing a key is an edit too.
+function getApiKeyBudgetsError(
+  values: VisualConfigValues,
+  dirtyFields?: ReadonlySet<string>
+): 'invalid_api_key_budgets' | undefined {
+  if (dirtyFields && !dirtyFields.has('apiKeyBudgets') && !dirtyFields.has('apiKeysText')) {
+    return undefined;
+  }
+  const issues = validateApiKeyBudgets(values.apiKeyBudgets, splitApiKeys(values.apiKeysText));
+  return hasApiKeyBudgetIssues(issues) ? 'invalid_api_key_budgets' : undefined;
+}
+
 export function getVisualConfigValidationErrors(
   values: VisualConfigValues,
   dirtyFields?: ReadonlySet<string>
@@ -190,6 +211,7 @@ export function getVisualConfigValidationErrors(
   return {
     ...validateVisualAdditions(values, dirtyFields),
     ...validateVisualServer(values),
+    apiKeyBudgets: getApiKeyBudgetsError(values, dirtyFields),
     port: getPortError(values.port),
     errorLogsMaxFiles: getNonNegativeIntegerError(values.errorLogsMaxFiles),
     logsMaxTotalSizeMb: getNonNegativeIntegerError(values.logsMaxTotalSizeMb),
@@ -1091,6 +1113,22 @@ function alignRebasedValues(
     }));
   return {
     ...draft,
+    apiKeyBudgets: {
+      ...draft.apiKeyBudgets,
+      entries: alignRebasedEntries(
+        baseline.apiKeyBudgets.entries,
+        draft.apiKeyBudgets.entries,
+        (entry) => entry.label,
+        (entry, prior) => ({
+          ...entry,
+          rules: alignRebasedEntries(
+            prior?.rules ?? [],
+            entry.rules,
+            (rule) => `${rule.models}|${rule.window}`
+          ),
+        })
+      ),
+    },
     [ICE_KEY]: alignRebasedEntries(baseline[ICE_KEY], draft[ICE_KEY], (row) => row.urlsText),
     payloadDefaultRules: alignRules(baseline.payloadDefaultRules, draft.payloadDefaultRules),
     payloadDefaultRawRules: alignRules(
@@ -1199,6 +1237,12 @@ function getNextDirtyFields(
     }
   });
   ADDITION_FIELDS.forEach(({ key }) => updateScalarDirty(key));
+  if (Object.prototype.hasOwnProperty.call(patch, 'apiKeyBudgets')) {
+    updateDirty(
+      'apiKeyBudgets',
+      areApiKeyBudgetsEqual(nextValues.apiKeyBudgets, baselineValues.apiKeyBudgets)
+    );
+  }
   if (Object.prototype.hasOwnProperty.call(patch, ICE_KEY)) {
     updateDirty(
       ICE_KEY,
@@ -1457,6 +1501,7 @@ function parseVisualValuesFromYaml(yamlContent: string): VisualConfigValues {
 
     authDir: typeof v8Oauth?.['auth-dir'] === 'string' ? v8Oauth?.['auth-dir'] : '',
     apiKeysText: parseApiKeysText(asRecord(parsed.access)?.['api-keys']),
+    apiKeyBudgets: readApiKeyBudgets(document),
     pluginsEnabled: Boolean(plugins?.enabled),
     pluginStoreSources: parseStringList(plugins?.['store-sources']),
     pluginStoreAuth: parsePluginStoreAuthRules(plugins?.['store-auth']),
@@ -1744,6 +1789,14 @@ export function useVisualConfig() {
           } else if (docHas(doc, ['access', 'api-keys'])) {
             doc.deleteIn(['access', 'api-keys']);
           }
+        }
+        if (dirtyFields.has('apiKeyBudgets')) {
+          writeApiKeyBudgets(
+            doc,
+            baselineValues.apiKeyBudgets,
+            values.apiKeyBudgets,
+            target === 'server' ? baselineYaml : undefined
+          );
         }
 
         const pluginsDirty =
