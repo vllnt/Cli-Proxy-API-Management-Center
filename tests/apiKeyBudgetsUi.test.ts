@@ -148,9 +148,9 @@ describe('API key budgets editor markup', () => {
     for (const button of buttons) {
       // Visible text: some non-space character between two tags.
       const hasText = />[^<]*\S[^<]*</.test(button);
-      expect(
-        /aria-label="[^"]+"/.test(button) || hasText || /aria-labelledby/.test(button)
-      ).toBe(true);
+      expect(/aria-label="[^"]+"/.test(button) || hasText || /aria-labelledby/.test(button)).toBe(
+        true
+      );
     }
     for (const name of [
       translations.t('config_management.visual.budgets.entry_remove_aria', { label: 'agents' }),
