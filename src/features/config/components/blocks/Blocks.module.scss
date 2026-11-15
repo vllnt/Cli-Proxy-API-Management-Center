@@ -126,6 +126,14 @@
 
 /* ---------- API key budgets ---------- */
 
+.budgetTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
 .budgetRule {
   display: flex;
   flex-direction: column;

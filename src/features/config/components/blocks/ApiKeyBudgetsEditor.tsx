@@ -21,14 +21,7 @@ import {
   type BudgetIssueCode,
 } from '../../apiKeyBudgets';
 import { apiKeyNameFingerprint, readApiKeyNames } from '../../apiKeyNames';
-import {
-  FieldGrid,
-  FieldHint,
-  FieldShell,
-  FieldStack,
-  InlinePill,
-  ToggleRow,
-} from '../fields/FieldPrimitives';
+import { FieldGrid, FieldHint, FieldShell, FieldStack, ToggleRow } from '../fields/FieldPrimitives';
 import styles from './Blocks.module.scss';
 
 interface ApiKeyBudgetsEditorProps {
@@ -107,10 +100,16 @@ function ScopedApiKeyBudgetsEditor({
       : undefined;
 
   // Only masked keys and names reach the DOM; the option value is an index, never a key.
-  const keyOptions: Option[] = apiKeys.map((key, index) => {
+  const keyLabels = apiKeys.map((key, index) => {
     const name = names[fingerprints[index]];
-    return { value: String(index), label: name ? `${name} · ${maskApiKey(key)}` : maskApiKey(key) };
+    return name ? `${name} · ${maskApiKey(key)}` : maskApiKey(key);
   });
+  // Different keys can mask alike; the list position (as in the API keys card) tells them apart.
+  const keyOptions: Option[] = keyLabels.map((label, index) => ({
+    value: String(index),
+    label:
+      keyLabels.indexOf(label) === keyLabels.lastIndexOf(label) ? label : `${label} #${index + 1}`,
+  }));
   const modeOptions = (inherit: boolean): Option[] => [
     ...(inherit
       ? [{ value: '', label: t('config_management.visual.budgets.rule_mode_inherit') }]
@@ -247,12 +246,14 @@ function ScopedApiKeyBudgetsEditor({
                   className={styles.ruleCard}
                 >
                   <div className={styles.ruleCardHeader}>
-                    <span className={styles.ruleCardTitle}>{entryName}</span>
-                    {allowlisted ? (
-                      <InlinePill>
-                        {t('config_management.visual.budgets.allowlist_badge')}
-                      </InlinePill>
-                    ) : null}
+                    <div className={styles.budgetTitle}>
+                      <span className={styles.ruleCardTitle}>{entryName}</span>
+                      {allowlisted ? (
+                        <span className="pill">
+                          {t('config_management.visual.budgets.allowlist_badge')}
+                        </span>
+                      ) : null}
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"

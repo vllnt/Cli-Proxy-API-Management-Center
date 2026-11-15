@@ -65,6 +65,15 @@ describe('API key budgets in the visual config', () => {
     expect(buildConfigPatch(SERVER, out).deletions).toEqual([]);
   });
 
+  test('switching to source mode writes the same budgets edit into the draft', () => {
+    const draft = draftOf(SERVER);
+    draft.entries[0].rules[0].limit = '1000';
+    const config = runVisualConfig(SERVER, [{ apiKeyBudgets: draft }]);
+    const toDraft = config.applyVisualChangesToYaml(SERVER, 'draft');
+    expect(toDraft).toBe(config.applyVisualChangesToYaml(SERVER, 'server'));
+    expect(toDraft).toContain('limit: 1000 }');
+  });
+
   test('adding a budget on the second key writes the label and the rules', () => {
     const draft = draftOf(NO_BUDGETS);
     const entry = createBudgetEntry();

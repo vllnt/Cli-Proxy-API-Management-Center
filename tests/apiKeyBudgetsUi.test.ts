@@ -108,6 +108,22 @@ describe('API key budgets editor markup', () => {
     expect(block).toContain(escapeText(maskApiKey(KEY_A)));
   });
 
+  test('tells keys that mask alike apart by their list position', () => {
+    const twin = 'sk-fixture-qrstuv1111111189';
+    const block = render(
+      createElement(ApiKeyBudgetsEditor, {
+        value: { ...budgets, entries: [{ ...budgets.entries[0], key: twin, saved: false }] },
+        apiKeysText: `${KEY_A}\n${twin}`,
+        onChange: () => {},
+      })
+    );
+    expect(maskApiKey(KEY_A)).toBe(maskApiKey(twin));
+    // The selected option is the second key, so its label carries its position.
+    expect(block).toContain(escapeText(`${maskApiKey(twin)} #2`));
+    expect(block).not.toContain(twin);
+    expect(block).not.toContain(KEY_A);
+  });
+
   test('gives every input, select and button an accessible name', () => {
     const block = render(
       createElement(ApiKeyBudgetsEditor, {
