@@ -220,3 +220,19 @@ describe('API key budgets editor markup', () => {
     expect((block.match(/aria-invalid="true"/g) ?? []).length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('API keys card', () => {
+  const message = 'A removed API key still has a label';
+
+  test('explains why dropping a labelled key cannot be saved yet', () => {
+    const markup = render(
+      createElement(SectionConnectivity, { ...props, values: { ...values, apiKeysText: KEY_A } })
+    );
+    expect(markup).toContain(message);
+    expect(markup).not.toContain(KEY_B);
+  });
+
+  test('stays quiet while every labelled key is listed', () => {
+    expect(render(createElement(SectionConnectivity, props))).not.toContain(message);
+  });
+});

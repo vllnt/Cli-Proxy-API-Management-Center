@@ -1,6 +1,6 @@
 import { isMap, isScalar, isSeq, parseDocument } from 'yaml';
 import type { YAMLMap } from 'yaml';
-import { assertConfigListsUnchanged } from '@/services/api/configPatch';
+import { assertConfigListsUnchanged, ConfigDraftConflictError } from '@/services/api/configPatch';
 import { makeClientId } from '@/types/visualConfig';
 import type {
   ApiKeyBudgetEntryDraft,
@@ -106,6 +106,15 @@ export const splitApiKeys = (apiKeysText: string): string[] =>
     .split('\n')
     .map((key) => key.trim())
     .filter(Boolean);
+
+/**
+ * The backend rejects a key list that drops a labelled key, and a save applies the key list
+ * before label deletions, so such a label has to go in an earlier save.
+ */
+export const dropsLabelledKey = (labels: Record<string, string>, apiKeys: readonly string[]) => {
+  const listed = new Set(apiKeys);
+  return Object.values(labels).some((key) => !listed.has(key));
+};
 
 /** Labels whose value is not a string cannot be a key mapping and stay out of the draft. */
 export function readApiKeyBudgets(doc: Doc): ApiKeyBudgetsDraft {
@@ -394,6 +403,10 @@ export function writeApiKeyBudgets(
     deleteIfMapEmpty(doc, ACCESS_PATH);
   } else {
     const fresh = !baseline.enabled;
+    // Someone else turned budgets on since load: writing defaults over their block is a guess.
+    if (fresh && serverYaml !== undefined && doc.hasIn(BUDGETS_PATH)) {
+      throw new ConfigDraftConflictError(BUDGETS_PATH);
+    }
     ensureMap(doc, BUDGETS_PATH);
     if (fresh || desired.mode !== baseline.mode) {
       syncScalar(doc, [...BUDGETS_PATH, 'mode'], desired.mode.trim());
@@ -419,11 +432,20 @@ export function writeApiKeyBudgets(
     for (const entry of desired.entries) {
       // Incomplete rows only exist in the draft; validation keeps them out of saves.
       if (!entry.label || !entry.key) continue;
-      if (plain(doc, [...KEY_LABELS_PATH, entry.label]) !== entry.key) {
+      const prior = before.get(entry.label);
+      // Never re-point a label: the auth allowlist may restrict the key it names.
+      const current = plain(doc, [...KEY_LABELS_PATH, entry.label]);
+      if (prior?.key === entry.key) {
+        // Unchanged mapping: leave the label to whoever owns it now.
+      } else if (current !== undefined && current !== entry.key) {
+        if (serverYaml !== undefined) {
+          throw new ConfigDraftConflictError([...KEY_LABELS_PATH, entry.label]);
+        }
+        continue;
+      } else if (current === undefined) {
         ensureMap(doc, KEY_LABELS_PATH);
         doc.setIn([...KEY_LABELS_PATH, entry.label], entry.key);
       }
-      const prior = before.get(entry.label);
       if (prior && sameRules(prior.rules, entry.rules)) continue;
       replaced.push(rulesPath(entry.label));
       writeRules(doc, rulesPath(entry.label), prior?.rules ?? [], entry.rules);

@@ -42,6 +42,7 @@ export type VisualConfigFieldPath =
 
 export type VisualConfigValidationErrorCode =
   | 'invalid_api_key_budgets'
+  | 'api_key_has_label'
   | 'invalid_trusted_proxies'
   | 'invalid_discovery_service_type'
   | 'invalid_duration'

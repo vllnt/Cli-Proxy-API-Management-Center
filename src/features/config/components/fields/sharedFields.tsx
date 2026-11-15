@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { Input } from '@/components/ui/Input';
 import type { VisualConfigValues } from '@/types/visualConfig';
 import { SPONSORS } from '../../sponsors';
+import { dropsLabelledKey, splitApiKeys } from '../../apiKeyBudgets';
 import { ApiKeyBudgetsEditor } from '../blocks/ApiKeyBudgetsEditor';
 import { ApiKeysCardEditor } from '../blocks/ApiKeysCardEditor';
 import { FieldAnchor, FieldGroup, ToggleRow } from './FieldPrimitives';
@@ -110,6 +111,11 @@ export function SponsorHintSpacer() {
 }
 
 export function ApiKeysField({ values, disabled, onChange }: SharedFieldProps) {
+  const { t } = useTranslation();
+  const labelledKeyDropped = dropsLabelledKey(
+    values.apiKeyBudgets.labels,
+    splitApiKeys(values.apiKeysText)
+  );
   return (
     <FieldAnchor fieldId="apiKeys">
       <FieldGroup>
@@ -118,6 +124,11 @@ export function ApiKeysField({ values, disabled, onChange }: SharedFieldProps) {
           disabled={disabled}
           onChange={(apiKeysText) => onChange({ apiKeysText })}
         />
+        {labelledKeyDropped ? (
+          <div className="error-box" role="alert">
+            {t('config_management.visual.validation.api_key_has_label')}
+          </div>
+        ) : null}
       </FieldGroup>
     </FieldAnchor>
   );

@@ -354,6 +354,65 @@ describe('writeApiKeyBudgets', () => {
     expect(out).toContain('limit: 1 }');
   });
 
+  test('an unrelated edit never re-points a label another writer changed meanwhile', () => {
+    const latest = YAML.replace('monitor: key-monitor-0002', 'monitor: key-spare-00003');
+    expect(latest).not.toBe(YAML);
+    const out = edit(
+      latest,
+      (draft) => {
+        draft.entries[0].rules[0].limit = '1';
+      },
+      YAML
+    );
+    expect(out).toContain('monitor: key-spare-00003');
+    expect(out).not.toContain('monitor: key-monitor-0002');
+  });
+
+  test('a new entry refuses to re-point a label that now names another key', () => {
+    const latest = YAML.replace(
+      '    monitor: key-monitor-0002\n',
+      '    monitor: key-monitor-0002\n    spare: key-agents-0001\n'
+    );
+    expect(latest).toContain('spare: key-agents-0001');
+    expect(() =>
+      edit(
+        latest,
+        (draft) => {
+          draft.entries.push({
+            ...createBudgetEntry(),
+            label: 'spare',
+            key: 'key-spare-00003',
+          });
+          draft.entries[2].rules[0].models = '*';
+        },
+        YAML
+      )
+    ).toThrow(ConfigDraftConflictError);
+  });
+
+  test('the source-mode draft keeps a mismatched label instead of re-pointing it', () => {
+    const doc = parseDocument(YAML);
+    const baseline = readApiKeyBudgets(parseDocument(YAML));
+    const desired = structuredClone(baseline);
+    desired.entries.push({ ...createBudgetEntry(), label: 'monitor', key: 'key-spare-00003' });
+    writeApiKeyBudgets(doc, baseline, desired);
+    expect(doc.toString(OPTIONS)).toContain('monitor: key-monitor-0002');
+  });
+
+  test('enabling refuses to overwrite a budgets block another writer created meanwhile', () => {
+    const off = canonical(RAW.replace(/ {2}api-key-budgets:[\s\S]*?(?=future-key)/, ''));
+    expect(off).not.toContain('api-key-budgets');
+    expect(() =>
+      edit(
+        YAML,
+        (draft) => {
+          draft.enabled = true;
+        },
+        off
+      )
+    ).toThrow(ConfigDraftConflictError);
+  });
+
   test('skips rows that are still incomplete in the draft', () => {
     const out = edit(YAML, (draft) => {
       draft.entries.push(createBudgetEntry());

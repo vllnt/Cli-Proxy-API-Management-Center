@@ -230,10 +230,11 @@ function ScopedApiKeyBudgetsEditor({
               {t('config_management.visual.budgets.entries_empty')}
             </div>
           ) : (
-            value.entries.map((entry) => {
+            value.entries.map((entry, entryIndex) => {
               const found = issues.entries[entry.id];
               const entryName = entry.label || t('config_management.visual.budgets.entry_untitled');
-              const base = `${id}-${entry.id}`;
+              // Labels may contain spaces, which would split aria-describedby id lists.
+              const base = `${id}-entry-${entryIndex}`;
               const keyIndex = apiKeys.indexOf(entry.key);
               const allowlisted = value.allowlistLabels.includes(entry.label);
               return (
@@ -304,7 +305,7 @@ function ScopedApiKeyBudgetsEditor({
                     <FieldHint>{t('config_management.visual.budgets.rules_hint')}</FieldHint>
                     {entry.rules.map((rule, index) => {
                       const problem = found?.rules[rule.id];
-                      const ruleBase = `${base}-${rule.id}`;
+                      const ruleBase = `${base}-rule-${index}`;
                       return (
                         <div
                           key={rule.id}

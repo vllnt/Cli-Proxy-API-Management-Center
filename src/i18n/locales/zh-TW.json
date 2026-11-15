@@ -1616,7 +1616,8 @@
         "payload_invalid_number": "請輸入有效數字",
         "payload_invalid_boolean": "請選擇 true 或 false",
         "payload_invalid_json": "請輸入有效的 JSON",
-        "invalid_api_key_budgets": "請先修正 API 金鑰預算中的錯誤再儲存。"
+        "invalid_api_key_budgets": "請先修正 API 金鑰預算中的錯誤再儲存。",
+        "api_key_has_label": "已移除的 API 金鑰仍有標籤（預算或驗證白名單）。請先移除其預算或白名單項目並儲存，再移除該金鑰。"
       },
       "common": {
         "edit": "編輯",

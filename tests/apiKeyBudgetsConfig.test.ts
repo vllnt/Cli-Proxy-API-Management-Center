@@ -2,10 +2,10 @@ import { describe, expect, test } from 'bun:test';
 import { createElement, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { parseDocument } from 'yaml';
-import { useVisualConfig } from '../src/hooks/useVisualConfig';
+import { getVisualConfigValidationErrors, useVisualConfig } from '../src/hooks/useVisualConfig';
 import { buildConfigPatch } from '../src/services/api/configPatch';
 import { createBudgetEntry } from '../src/features/config/apiKeyBudgets';
-import type { ApiKeyBudgetsDraft } from '../src/types/visualConfig';
+import { DEFAULT_VISUAL_VALUES, type ApiKeyBudgetsDraft } from '../src/types/visualConfig';
 import { runVisualConfig } from './helpers/visualConfig';
 
 // The yaml library's own output form, so equality below is byte identity.
@@ -126,7 +126,7 @@ describe('API key budgets in the visual config', () => {
 
   test('removing an API key that a budget uses blocks the save', () => {
     const config = runVisualConfig(SERVER, [{ apiKeysText: 'key-monitor-0002\nkey-spare-00003' }]);
-    expect(config.visualValidationErrors.apiKeyBudgets).toBe('invalid_api_key_budgets');
+    expect(config.visualValidationErrors.apiKeyBudgets).toBe('api_key_has_label');
   });
 
   test('a rebase keeps the user edit and aligns the entry with the new server state', () => {
@@ -155,5 +155,32 @@ describe('API key budgets in the visual config', () => {
     expect(seen?.entries[0].id).toBe('budget:agents');
     // The server still has the old limit, so the edit stays pending after the rebase.
     expect(dirty).toEqual(['apiKeyBudgets']);
+  });
+});
+
+describe('removing a labelled API key', () => {
+  const values = (apiKeysText: string) => ({
+    ...structuredClone(DEFAULT_VISUAL_VALUES),
+    apiKeysText,
+    apiKeyBudgets: {
+      ...structuredClone(DEFAULT_VISUAL_VALUES.apiKeyBudgets),
+      labels: { agents: 'key-agents-0001' },
+    },
+  });
+
+  test('is blocked until the label is removed in an earlier save', () => {
+    const errors = getVisualConfigValidationErrors(
+      values('key-spare-00003'),
+      new Set(['apiKeysText', 'apiKeyBudgets'])
+    );
+    expect(errors.apiKeyBudgets).toBe('api_key_has_label');
+  });
+
+  test('does not block adding a key or edits that keep the labelled key', () => {
+    const errors = getVisualConfigValidationErrors(
+      values('key-agents-0001\nkey-new-000004'),
+      new Set(['apiKeysText'])
+    );
+    expect(errors.apiKeyBudgets).toBeUndefined();
   });
 });

@@ -1590,7 +1590,8 @@
         "payload_invalid_number": "请输入有效数字",
         "payload_invalid_boolean": "请选择 true 或 false",
         "payload_invalid_json": "请输入有效的 JSON",
-        "invalid_api_key_budgets": "请先修正 API 密钥预算中的错误再保存。"
+        "invalid_api_key_budgets": "请先修正 API 密钥预算中的错误再保存。",
+        "api_key_has_label": "已移除的 API 密钥仍有标签（预算或认证白名单）。请先移除其预算或白名单条目并保存，再移除该密钥。"
       },
       "common": {
         "edit": "编辑",

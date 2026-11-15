@@ -1592,7 +1592,8 @@
         "payload_invalid_number": "Enter a valid number",
         "payload_invalid_boolean": "Choose true or false",
         "payload_invalid_json": "Enter valid JSON",
-        "invalid_api_key_budgets": "Fix the API key budget errors before saving."
+        "invalid_api_key_budgets": "Fix the API key budget errors before saving.",
+        "api_key_has_label": "A removed API key still has a label (budget or auth allowlist). Remove its budget or allowlist entry and save first, then remove the key."
       },
       "common": {
         "edit": "Edit",

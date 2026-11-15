@@ -32,6 +32,7 @@ import {
   readApiKeyBudgets,
   splitApiKeys,
   validateApiKeyBudgets,
+  dropsLabelledKey,
   writeApiKeyBudgets,
 } from '@/features/config/apiKeyBudgets';
 
@@ -196,11 +197,18 @@ function getRedisRetentionError(value: string): 'integer_range_1_3600' | undefin
 function getApiKeyBudgetsError(
   values: VisualConfigValues,
   dirtyFields?: ReadonlySet<string>
-): 'invalid_api_key_budgets' | undefined {
+): 'invalid_api_key_budgets' | 'api_key_has_label' | undefined {
   if (dirtyFields && !dirtyFields.has('apiKeyBudgets') && !dirtyFields.has('apiKeysText')) {
     return undefined;
   }
-  const issues = validateApiKeyBudgets(values.apiKeyBudgets, splitApiKeys(values.apiKeysText));
+  const apiKeys = splitApiKeys(values.apiKeysText);
+  if (
+    (!dirtyFields || dirtyFields.has('apiKeysText')) &&
+    dropsLabelledKey(values.apiKeyBudgets.labels, apiKeys)
+  ) {
+    return 'api_key_has_label';
+  }
+  const issues = validateApiKeyBudgets(values.apiKeyBudgets, apiKeys);
   return hasApiKeyBudgetIssues(issues) ? 'invalid_api_key_budgets' : undefined;
 }
 
