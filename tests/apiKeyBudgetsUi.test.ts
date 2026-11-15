@@ -146,9 +146,10 @@ describe('API key budgets editor markup', () => {
     const buttons = block.match(/<button\b[^>]*>[\s\S]*?<\/button>/g) ?? [];
     expect(buttons.length).toBeGreaterThan(3);
     for (const button of buttons) {
-      const text = button.replace(/<[^>]*>/g, '').trim();
+      // Visible text: some non-space character between two tags.
+      const hasText = />[^<]*\S[^<]*</.test(button);
       expect(
-        /aria-label="[^"]+"/.test(button) || text.length > 0 || /aria-labelledby/.test(button)
+        /aria-label="[^"]+"/.test(button) || hasText || /aria-labelledby/.test(button)
       ).toBe(true);
     }
     for (const name of [
