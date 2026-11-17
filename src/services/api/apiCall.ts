@@ -2,8 +2,8 @@
  * Generic API call helper (proxied via management API).
  */
 
-import type { AxiosRequestConfig } from 'axios';
 import { apiClient } from './client';
+import type { HttpRequestConfig } from './http';
 import { isRecord } from '@/utils/helpers';
 
 export interface ApiCallRequest {
@@ -77,7 +77,7 @@ export const getApiCallErrorMessage = (result: ApiCallResult): string => {
 };
 
 export const apiCallApi = {
-  request: async (payload: ApiCallRequest, config?: AxiosRequestConfig): Promise<ApiCallResult> => {
+  request: async (payload: ApiCallRequest, config?: HttpRequestConfig): Promise<ApiCallResult> => {
     const response = await apiClient.post<Record<string, unknown>>(
       '/requests/api-call',
       payload,

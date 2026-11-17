@@ -1,5 +1,4 @@
 import { afterAll, afterEach, beforeAll, describe, expect, spyOn, test } from 'bun:test';
-import axios from 'axios';
 import { apiClient } from '@/services/api/client';
 import { LegacyBackendError } from '@/services/api/legacyBackendProbe';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -48,24 +47,27 @@ describe('legacy backend login diagnostic', () => {
   test('confirms v0 config after v8 404 without logging in', async () => {
     const v8Error = Object.assign(new Error('not found'), { status: 404 });
     spies.push(spyOn(useConfigStore.getState(), 'fetchConfig').mockRejectedValue(v8Error));
-    const probe = spyOn(axios, 'get').mockResolvedValue({ data: { 'api-keys': [] } });
-    spies.push(probe);
+    const probe = spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ 'api-keys': [] }), { status: 200 })
+    );
+    const timeout = spyOn(AbortSignal, 'timeout');
+    spies.push(probe, timeout);
 
     await expect(useAuthStore.getState().login(credentials)).rejects.toBeInstanceOf(
       LegacyBackendError
     );
     expect(probe).toHaveBeenCalledTimes(1);
-    expect(probe).toHaveBeenCalledWith(
-      'https://proxy.invalid/gateway/v0/management/config',
-      expect.objectContaining({ headers: { Authorization: 'Bearer fixture-only' }, timeout: 3000 })
-    );
+    const [url, init] = probe.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://proxy.invalid/gateway/v0/management/config');
+    expect(new Headers(init.headers).get('Authorization')).toBe('Bearer fixture-only');
+    expect(timeout).toHaveBeenCalledWith(3000);
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 
   test('does not diagnose auth failures as old backend', async () => {
     const error = Object.assign(new Error('unauthorized'), { status: 401 });
     spies.push(spyOn(useConfigStore.getState(), 'fetchConfig').mockRejectedValue(error));
-    const probe = spyOn(axios, 'get');
+    const probe = spyOn(globalThis, 'fetch');
     spies.push(probe);
     await expect(useAuthStore.getState().login(credentials)).rejects.toBe(error);
     expect(probe).not.toHaveBeenCalled();
@@ -74,7 +76,9 @@ describe('legacy backend login diagnostic', () => {
   test('keeps the original 404 when the v0 request fails or returns non-config content', async () => {
     const error = Object.assign(new Error('not found'), { status: 404 });
     spies.push(spyOn(useConfigStore.getState(), 'fetchConfig').mockRejectedValue(error));
-    const probe = spyOn(axios, 'get').mockResolvedValueOnce({ data: '<html>not a config</html>' });
+    const probe = spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response('<html>not a config</html>', { status: 200 })
+    );
     spies.push(probe);
     await expect(useAuthStore.getState().login(credentials)).rejects.toBe(error);
     probe.mockRejectedValueOnce(new Error('network unavailable'));
@@ -84,9 +88,9 @@ describe('legacy backend login diagnostic', () => {
   test('does not publish an obsolete diagnostic after a connection switch', async () => {
     const error = Object.assign(new Error('not found'), { status: 404 });
     spies.push(spyOn(useConfigStore.getState(), 'fetchConfig').mockRejectedValue(error));
-    const probe = spyOn(axios, 'get').mockImplementation(async () => {
+    const probe = spyOn(globalThis, 'fetch').mockImplementation(async () => {
       apiClient.setConfig({ apiBase: 'https://new.invalid', managementKey: 'other' });
-      return { data: {} };
+      return new Response('{}', { status: 200 });
     });
     spies.push(probe);
     await expect(useAuthStore.getState().login(credentials)).rejects.toBe(error);

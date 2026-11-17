@@ -2,10 +2,10 @@
  * 可用模型获取
  */
 
-import axios from 'axios';
 import { normalizeModelList } from '@/utils/models';
 import { normalizeApiBase } from '@/utils/connection';
 import { apiCallApi, getApiCallErrorMessage } from './apiCall';
+import { httpRequest } from './http';
 import { isRecord } from '@/utils/helpers';
 
 const DEFAULT_CLAUDE_BASE_URL = 'https://api.anthropic.com';
@@ -97,10 +97,8 @@ export const modelsApi = {
       resolvedHeaders.Authorization = `Bearer ${apiKey}`;
     }
 
-    const response = await axios.get(endpoint, {
-      headers: Object.keys(resolvedHeaders).length ? resolvedHeaders : undefined,
-    });
-    const payload = response.data?.data ?? response.data?.models ?? response.data;
+    const { data } = await httpRequest('GET', endpoint, { headers: resolvedHeaders });
+    const payload = isRecord(data) ? (data.data ?? data.models ?? data) : data;
     return normalizeModelList(payload, { dedupe: true });
   },
 

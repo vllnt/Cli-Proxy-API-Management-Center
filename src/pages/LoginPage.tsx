@@ -39,10 +39,10 @@ function getLocalizedErrorMessage(error: unknown, t: (key: string) => string): s
       return summary;
     }
 
-    const genericAxiosMessage = `Request failed with status code ${status}`;
+    const genericStatusMessage = `Request failed with status code ${status}`;
     const detail = message.trim();
     const backendDetail =
-      detail && detail !== genericAxiosMessage
+      detail && detail !== genericStatusMessage
         ? ` (${t('login.error_backend_detail')}: ${detail})`
         : '';
 
@@ -63,7 +63,7 @@ function getLocalizedErrorMessage(error: unknown, t: (key: string) => string): s
     return withHttpStatus(t('login.error_server'));
   }
 
-  // 根据 axios 错误码判断
+  // 根据传输层错误码判断
   if (code === 'ECONNABORTED' || message.toLowerCase().includes('timeout')) {
     return t('login.error_timeout');
   }

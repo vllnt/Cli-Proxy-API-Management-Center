@@ -120,7 +120,7 @@ bun run dev
 
 Open `http://localhost:5173` and connect to your backend instance.
 
-**Built with** React 19 · TypeScript 6 · Vite 8 · Zustand · Axios · React Router 7 · Motion · CodeMirror 6 · SCSS Modules · i18next.
+**Built with** React 19 · TypeScript 6 · Vite 8 · Zustand · React Router 7 · Motion · CodeMirror 6 · SCSS Modules · i18next.
 
 | Command | Purpose |
 | --- | --- |
