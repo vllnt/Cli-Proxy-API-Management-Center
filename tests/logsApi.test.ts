@@ -1,5 +1,4 @@
 import { describe, expect, spyOn, test } from 'bun:test';
-import { AxiosError, AxiosHeaders, type AxiosInstance } from 'axios';
 import { apiClient } from '@/services/api/client';
 import { logsApi, responseDataToText } from '@/services/api/logs';
 import type { ApiError } from '@/types';
@@ -111,27 +110,22 @@ describe('log downloads', () => {
     }
   });
 
-  test('decodes Blob JSON from the actual client interceptor and emits unauthorized exactly once', async () => {
-    const instance = (apiClient as unknown as { instance: AxiosInstance }).instance;
-    const adapter = instance.defaults.adapter;
+  test('decodes Blob JSON from the actual client and emits unauthorized exactly once', async () => {
     const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
     const events: string[] = [];
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: { dispatchEvent: (event: Event) => events.push(event.type) },
     });
-    const body = new Blob([JSON.stringify({ error: 'unauthorized', message: 'Key rejected' })], {
-      type: 'application/json',
-    });
-    instance.defaults.adapter = async (config) => {
-      throw new AxiosError(
-        'Request failed with status code 401',
-        'ERR_BAD_REQUEST',
-        config,
-        undefined,
-        { data: body, status: 401, statusText: 'Unauthorized', headers: new AxiosHeaders(), config }
-      );
-    };
+    const json = JSON.stringify({ error: 'unauthorized', message: 'Key rejected' });
+    const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(json, {
+          status: 401,
+          statusText: 'Unauthorized',
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
     try {
       const error = await logsApi.downloadErrorLog('error.log').catch((err: ApiError) => err);
       expect(error).toMatchObject({
@@ -140,13 +134,15 @@ describe('log downloads', () => {
         status: 401,
         code: 'ERR_BAD_REQUEST',
         apiCode: 'unauthorized',
-        data: body,
-        details: body,
       });
+      // The failure body stays available as a Blob on data/details.
+      expect((error as ApiError).data).toBeInstanceOf(Blob);
+      expect((error as ApiError).details).toBe((error as ApiError).data);
+      expect(await ((error as ApiError).data as Blob).text()).toBe(json);
       expect('response' in error).toBe(false);
       expect(events).toEqual(['unauthorized']);
     } finally {
-      instance.defaults.adapter = adapter;
+      fetchSpy.mockRestore();
       if (windowDescriptor) Object.defineProperty(globalThis, 'window', windowDescriptor);
       else Reflect.deleteProperty(globalThis, 'window');
     }

@@ -105,13 +105,13 @@ export const responseDataToText = async (data: unknown): Promise<string> => {
 
 const downloadLog = async (path: string, options: LogsRequestOptions) => {
   try {
-    return await apiClient.getRaw(path, {
+    return await apiClient.getRaw<Blob>(path, {
       ...options,
       responseType: 'blob',
       timeout: LOGS_TIMEOUT_MS,
     });
   } catch (error: unknown) {
-    // The client already emitted unauthorized on 401 and normalized the Axios error.
+    // The client already emitted unauthorized on 401 and normalized the transport error.
     // It retains the body in data/details, NOT response.data. Preserve its identity,
     // status, transport code and body while enriching the human-readable error.
     if (error instanceof Error) {
