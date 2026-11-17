@@ -176,6 +176,24 @@ describe('fetch transport failures', () => {
     ).rejects.toMatchObject({ code: 'ERR_CANCELED' });
   });
 
+  test('combines caller and timeout signals without AbortSignal.any', async () => {
+    const any = Object.getOwnPropertyDescriptor(AbortSignal, 'any');
+    Reflect.deleteProperty(AbortSignal, 'any');
+    try {
+      mockFetch(hangUntilAborted);
+      const controller = new AbortController();
+      const canceled = httpRequest('GET', '/x', { signal: controller.signal, timeout: 60_000 });
+      controller.abort();
+      await expect(canceled).rejects.toMatchObject({ code: 'ERR_CANCELED' });
+
+      await expect(
+        httpRequest('GET', '/x', { signal: new AbortController().signal, timeout: 10 })
+      ).rejects.toMatchObject({ code: 'ECONNABORTED' });
+    } finally {
+      if (any) Object.defineProperty(AbortSignal, 'any', any);
+    }
+  });
+
   test('applies no timeout unless one is requested', async () => {
     const timeout = spyOn(AbortSignal, 'timeout');
     restores.push(timeout);

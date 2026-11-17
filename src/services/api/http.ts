@@ -106,6 +106,20 @@ const readBody = async (response: Response, responseType: HttpResponseType): Pro
   }
 };
 
+// AbortSignal.any needs Safari 17.4 / Firefox 124, above the panel's existing browser floor,
+// so caller and timeout signals are combined by hand.
+const anySignal = (signals: AbortSignal[]): AbortSignal => {
+  const controller = new AbortController();
+  for (const source of signals) {
+    if (source.aborted) {
+      controller.abort(source.reason);
+      break;
+    }
+    source.addEventListener('abort', () => controller.abort(source.reason), { once: true });
+  }
+  return controller.signal;
+};
+
 export async function httpRequest<T = unknown>(
   method: string,
   url: string,
@@ -117,7 +131,7 @@ export async function httpRequest<T = unknown>(
 
   const timeoutSignal = timeout && timeout > 0 ? AbortSignal.timeout(timeout) : undefined;
   const signals = [signal, timeoutSignal].filter((item): item is AbortSignal => Boolean(item));
-  const combined = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
+  const combined = signals.length > 1 ? anySignal(signals) : signals[0];
 
   try {
     const response = await globalThis.fetch(withParams(url, params), {
