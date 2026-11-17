@@ -236,6 +236,17 @@ export function hasConfigPatchChanges(plan: ConfigPatchPlan): boolean {
   );
 }
 
+const isApiKeyLabelPath = (path: string[]) => path[0] === 'access' && path[1] === 'api-key-labels';
+
+/**
+ * The backend re-validates the whole config after every request, and budgets and allowlists
+ * reference api-key-labels. Deleting a label before its references would be rejected (422),
+ * so label deletions go last; every other path keeps its order (the sort is stable).
+ */
+function labelDeletionsLast(deletions: string[][]): string[][] {
+  return [...deletions].sort((a, b) => Number(isApiKeyLabelPath(a)) - Number(isApiKeyLabelPath(b)));
+}
+
 export async function applyConfigPatch(
   plan: ConfigPatchPlan,
   connectionRevision: number
@@ -246,7 +257,7 @@ export async function applyConfigPatch(
     }
   };
   // Validate every path before performing any mutations, including for caller-built plans.
-  const urls = plan.deletions.map(fieldUrl);
+  const urls = labelDeletionsLast(plan.deletions).map(fieldUrl);
   const emptyMapUrls = (plan.emptyMaps ?? []).map(fieldUrl);
   checkConnection();
   if (Object.keys(plan.patch).length) {

@@ -71,7 +71,7 @@ export const COMMON_FIELD_IDS = [
  */
 export const SECTION_VALIDATION_FIELDS: Record<VisualSectionId, readonly VisualConfigFieldPath[]> =
   {
-    connectivity: ['port', 'trustedProxies', 'discoveryServiceType'],
+    connectivity: ['port', 'trustedProxies', 'discoveryServiceType', 'apiKeyBudgets'],
     network: [
       'requestRetry',
       'maxRetryCredentials',
@@ -148,6 +148,7 @@ export const FIELD_VALUE_KEYS: Record<string, readonly string[]> = {
   port: ['port'],
   authDir: ['authDir'],
   apiKeys: ['apiKeysText'],
+  apiKeyBudgets: ['apiKeyBudgets'],
   tlsEnable: ['tlsEnable'],
   tlsCert: ['tlsCert'],
   tlsKey: ['tlsKey'],

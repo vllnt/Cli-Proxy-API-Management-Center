@@ -209,6 +209,30 @@ describe('applyConfigPatch', () => {
     expect(revision).toHaveBeenCalledTimes(6);
   });
 
+  test('deletes api-key-labels last so budgets and allowlists never reference a missing label', async () => {
+    const { calls } = setup();
+    const before = [
+      'access:',
+      '  api-key-labels: {agents: sk-fixture-a, monitor: sk-fixture-b}',
+      '  api-key-budgets:',
+      '    labels:',
+      '      agents: [{models: "*", window: day, limit: 5}]',
+      '  api-key-auth-allowlist:',
+      '    monitor: {tags: [pool]}',
+      'other: 1',
+    ].join('\n');
+    await applyConfigPatch(buildConfigPatch(before, 'access: {api-keys: [sk-fixture-a]}'), 7);
+    const deleted = calls.filter(([method]) => method === 'DELETE').map(([, url]) => String(url));
+    const labelDeletes = deleted.filter((url) => url.includes('/api-key-labels/'));
+    expect(labelDeletes).toHaveLength(2);
+    expect(deleted.slice(-2)).toEqual(labelDeletes);
+    expect(deleted.filter((url) => !url.includes('/api-key-labels/')).sort()).toEqual([
+      '/config/access/api-key-auth-allowlist/monitor/tags',
+      '/config/access/api-key-budgets/labels/agents',
+      '/config/other',
+    ]);
+  });
+
   test('no-op performs no requests; deletion-only skips PATCH', async () => {
     const { calls } = setup();
     await applyConfigPatch(buildConfigPatch('{}', '{}'), 7);

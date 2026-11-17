@@ -312,6 +312,14 @@ export const CONFIG_FIELD_SEARCH_INDEX: ConfigFieldSearchEntry[] = [
     keywords: ['api key', 'apikey', 'token'],
   },
   {
+    fieldId: 'apiKeyBudgets',
+    sectionId: 'connectivity',
+    labelKey: L('budgets.title'),
+    hintKey: L('budgets.summary'),
+    yamlKeys: ['access', 'api-key-budgets'],
+    keywords: ['budget', 'token limit', 'quota', 'api-key-labels', 'label', 'x-budget'],
+  },
+  {
     fieldId: 'tlsEnable',
     sectionId: 'connectivity',
     labelKey: L('sections.tls.enable'),
