@@ -14,6 +14,7 @@ export type AuthFileType =
   | 'codex'
   | 'devin'
   | 'meta'
+  | 'mistral'
   | 'antigravity'
   | 'xai'
   | 'iflow'

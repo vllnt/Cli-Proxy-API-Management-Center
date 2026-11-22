@@ -21,6 +21,7 @@ import { createOAuthAttempts, type OAuthAttempt } from './oauthAttempts';
 import { validateDevinCallback } from './devinOAuth';
 import styles from './OAuthPage.module.scss';
 import iconMeta from '@/assets/icons/meta.svg';
+import iconMistral from '@/assets/icons/mistral.svg';
 import iconCodex from '@/assets/icons/codex.svg';
 import iconClaude from '@/assets/icons/claude.svg';
 import iconAntigravity from '@/assets/icons/antigravity.svg';
@@ -93,6 +94,12 @@ const PROVIDERS: BuiltInOAuthProviderCard[] = [
   },
   {
     kind: 'builtin',
+    id: 'mistral',
+    titleKey: 'auth_login.mistral_oauth_title',
+    icon: iconMistral,
+  },
+  {
+    kind: 'builtin',
     id: 'kimi',
     titleKey: 'auth_login.kimi_oauth_title',
     icon: { light: iconKimiDark, dark: iconKimiLight },
@@ -137,6 +144,8 @@ const PROVIDERS: BuiltInOAuthProviderCard[] = [
 
 const BUILTIN_PROVIDER_IDS = new Set<string>(PROVIDERS.map((provider) => provider.id));
 const CALLBACK_SUPPORTED = new Set<string>(['codex', 'anthropic', 'antigravity', 'xai', 'devin']);
+// Providers whose pending server session must be cancelled explicitly before a new login.
+const CANCELLABLE_PROVIDERS = new Set<string>(['devin', 'mistral']);
 const XAI_CALLBACK_URL = 'http://127.0.0.1:56121/callback';
 const SUCCESS_RESET_DELAY_MS = 5000;
 const getProviderI18nPrefix = (provider: string) => provider.replace('-', '_');
@@ -401,7 +410,7 @@ export function OAuthPage() {
           completeProviderAuth(provider);
           showNotification(getProviderTextByID(provider, 'oauth_status_success'), 'success');
         } else if (res.status === 'error') {
-          if (provider === 'devin') {
+          if (CANCELLABLE_PROVIDERS.has(provider)) {
             // Expired, denied and cancelled states cannot accept another callback.
             attempt.invalidate();
             updateProviderState(provider, {
@@ -434,7 +443,7 @@ export function OAuthPage() {
 
   const cancelAuth = async (provider: string) => {
     const state = states[provider]?.state;
-    if (provider !== 'devin' || !state || states[provider]?.cancelling) return;
+    if (!CANCELLABLE_PROVIDERS.has(provider) || !state || states[provider]?.cancelling) return;
     // Replace the attempt before DELETE so late polls/callback submissions cannot
     // overwrite the cancellation result or a subsequent login.
     const attempt = attempts.current.begin(provider);
@@ -451,7 +460,7 @@ export function OAuthPage() {
       if (!attempt.isCurrent()) return;
       if (result.cancelled) {
         resetProviderAttempt(provider);
-        showNotification(t('auth_login.devin_oauth_cancelled'), 'success');
+        showNotification(getProviderTextByID(provider, 'oauth_cancelled'), 'success');
         return;
       }
       // A completed or expired session returns cancelled=false. Read its real
@@ -460,7 +469,10 @@ export function OAuthPage() {
       if (!attempt.isCurrent()) return;
       const message = getErrorMessage(err);
       updateProviderState(provider, { cancelError: message });
-      showNotification(`${t('auth_login.devin_oauth_cancel_error')} ${message}`, 'error');
+      showNotification(
+        `${getProviderTextByID(provider, 'oauth_cancel_error')} ${message}`,
+        'error'
+      );
     }
     updateProviderState(provider, {
       cancelling: false,
@@ -472,8 +484,8 @@ export function OAuthPage() {
 
   const startAuth = async (provider: string) => {
     // A network error can stop polling while the server is still waiting. Require
-    // explicit cancellation before replacing that Devin session.
-    if (provider === 'devin' && states[provider]?.state) return;
+    // explicit cancellation before replacing that session.
+    if (CANCELLABLE_PROVIDERS.has(provider) && states[provider]?.state) return;
     const attempt = attempts.current.begin(provider);
     updateProviderState(provider, {
       url: undefined,
@@ -713,7 +725,7 @@ export function OAuthPage() {
             <Button
               onClick={() => startAuth(provider.id)}
               loading={state.polling}
-              disabled={provider.id === 'devin' && Boolean(state.state)}
+              disabled={CANCELLABLE_PROVIDERS.has(provider.id) && Boolean(state.state)}
             >
               {loginButtonLabel}
             </Button>
@@ -750,25 +762,27 @@ export function OAuthPage() {
                 >
                   {getProviderText(provider, 'open_link')}
                 </Button>
-                {provider.id === 'devin' && state.state && (
+                {CANCELLABLE_PROVIDERS.has(provider.id) && state.state && (
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => cancelAuth(provider.id)}
                     loading={state.cancelling}
                   >
-                    {t('auth_login.devin_oauth_cancel')}
+                    {getProviderText(provider, 'oauth_cancel')}
                   </Button>
                 )}
               </div>
-              {provider.id === 'devin' && state.state && state.status === 'error' && (
-                <div className={styles.cardHintSecondary}>
-                  {t('auth_login.devin_oauth_retry_hint')}
-                </div>
-              )}
+              {CANCELLABLE_PROVIDERS.has(provider.id) &&
+                state.state &&
+                state.status === 'error' && (
+                  <div className={styles.cardHintSecondary}>
+                    {getProviderText(provider, 'oauth_retry_hint')}
+                  </div>
+                )}
               {state.cancelError && (
                 <div className="status-badge error">
-                  {t('auth_login.devin_oauth_cancel_error')} {state.cancelError}
+                  {getProviderText(provider, 'oauth_cancel_error')} {state.cancelError}
                 </div>
               )}
             </div>

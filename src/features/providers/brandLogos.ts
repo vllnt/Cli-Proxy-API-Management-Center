@@ -1,6 +1,7 @@
 import claudeLogo from '@/assets/icons/claude.svg';
 import codexLogo from '@/assets/icons/codex.svg';
 import metaLogo from '@/assets/icons/meta.svg';
+import mistralLogo from '@/assets/icons/mistral.svg';
 import devinLightLogo from '@/assets/icons/devin.svg';
 import devinDarkLogo from '@/assets/icons/devin-dark.svg';
 import geminiLogo from '@/assets/icons/gemini.svg';
@@ -24,7 +25,7 @@ export interface ProviderBrandLogo {
   invertOnDark?: boolean;
 }
 
-export type ProviderBrandLogoKey = ProviderBrand | 'devin';
+export type ProviderBrandLogoKey = ProviderBrand | 'devin' | 'mistral';
 
 export const PROVIDER_LOGOS: Record<ProviderBrandLogoKey, ProviderBrandLogo> = {
   gemini: { src: geminiLogo },
@@ -32,6 +33,7 @@ export const PROVIDER_LOGOS: Record<ProviderBrandLogoKey, ProviderBrandLogo> = {
   claude: { src: claudeLogo },
   codex: { src: codexLogo },
   meta: { src: metaLogo, transparent: true },
+  mistral: { src: mistralLogo, transparent: true },
   devin: { src: devinLightLogo, darkSrc: devinDarkLogo, transparent: true },
   xai: { src: xaiLightLogo, darkSrc: xaiDarkLogo, transparent: true },
   vertex: { src: vertexLogo },

@@ -3,6 +3,7 @@ import iconAntigravity from '@/assets/icons/antigravity.svg';
 import iconClaude from '@/assets/icons/claude.svg';
 import iconCodex from '@/assets/icons/codex.svg';
 import iconMeta from '@/assets/icons/meta.svg';
+import iconMistral from '@/assets/icons/mistral.svg';
 import iconDevin from '@/assets/icons/devin.svg';
 import iconDevinDark from '@/assets/icons/devin-dark.svg';
 import iconGemini from '@/assets/icons/gemini.svg';
@@ -44,6 +45,7 @@ export const QUOTA_PROVIDER_TYPES = new Set<QuotaProviderType>([
 
 export const OAUTH_PROVIDER_PRESETS = [
   'meta',
+  'mistral',
   'vertex',
   'aistudio',
   'antigravity',
@@ -82,6 +84,7 @@ export const AUTH_FILE_ICONS: Record<string, AuthFileIconAsset> = {
   claude: iconClaude,
   codex: iconCodex,
   meta: iconMeta,
+  mistral: iconMistral,
   devin: { light: iconDevin, dark: iconDevinDark },
   gemini: iconGemini,
   xai: { light: iconGrok, dark: iconGrokDark },
