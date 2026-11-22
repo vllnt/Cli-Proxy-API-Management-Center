@@ -34,3 +34,6 @@ settings.local.json
 *.njsproj
 *.sln
 *.sw?
+
+# Private privacy-guard patterns (never commit)
+.privacy-denylist.local
