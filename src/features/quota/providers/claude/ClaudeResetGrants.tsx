@@ -10,7 +10,7 @@ import {
 } from '@/services/api/claudeResetGrants';
 import type { AuthFileItem } from '@/types';
 import { normalizeAuthIndex } from '@/utils/quota';
-import { resetGrantOperations, RETRY_WINDOW_MS } from './resetGrantOperations';
+import { resetGrantMessage, resetGrantOperations, RETRY_WINDOW_MS } from './resetGrantOperations';
 import { selectResetGrant } from './selectResetGrant';
 
 /** Card-owned reads; the session-scoped journal owns spending and ambiguous retries. */
@@ -62,10 +62,49 @@ export function useClaudeResetGrants(
   }, [authIndex, key, enabled, disabled, sessionActive, session, refreshToken, reload]);
 
   const operation = resetGrantOperations.inspect(key);
+  const sync = resetGrantOperations.inspectSync(key);
   const pending = operation && !operation.code ? operation : undefined;
   const expired = Boolean(pending && now - pending.createdAt >= RETRY_WINDOW_MS);
   const selected = pending?.grantId ?? (status ? selectResetGrant(status, now)?.id : undefined);
-  const blocked = disabled || !sessionActive || !authIndex || busy || expired || !selected;
+  const syncBlocked = !enabled || disabled || !sessionActive || !authIndex || busy;
+  const blocked = syncBlocked || expired || !selected || Boolean(sync?.pending);
+  const perform = async (action: 'claim' | 'sync', version: number) => {
+    const current = () =>
+      session === apiClient.getConnectionRevision() && version === generation.current;
+    if (!current() || lock.current || useAuthStore.getState().connectionStatus !== 'connected')
+      return;
+    lock.current = true;
+    setBusy(true);
+    try {
+      if (action === 'sync') await resetGrantOperations.reconcile(key, authIndex!);
+      else await resetGrantOperations.run(key, authIndex!, selected!);
+      if (!current()) return;
+      const answer = resetGrantOperations.inspect(key);
+      const routing = resetGrantOperations.inspectSync(key);
+      const result = resetGrantMessage(answer, routing);
+      showNotification(
+        t(`claude_reset.${result}`),
+        routing && !routing.pending && (!answer || Boolean(answer.code)) ? 'success' : 'error'
+      );
+    } catch {
+      if (!current()) return;
+      const unresolved = resetGrantOperations.inspect(key);
+      showNotification(
+        t(
+          `claude_reset.${unresolved && !unresolved.code ? 'unknown' : action === 'sync' ? 'sync_pending' : 'blocked'}`
+        ),
+        'error'
+      );
+    } finally {
+      lock.current = false;
+      setBusy(false);
+      /** Refresh both views only for the account/session that initiated this operation. */
+      if (current()) {
+        setReload((value) => value + 1);
+        onRefresh();
+      }
+    }
+  };
   const confirm = () => {
     if (blocked || lock.current || !selected || !authIndex) return;
     const version = generation.current;
@@ -78,36 +117,7 @@ export function useClaudeResetGrants(
       }),
       confirmText: t(pending ? 'claude_reset.retry' : 'claude_reset.confirm'),
       variant: 'primary',
-      onConfirm: async () => {
-        if (!current() || lock.current || useAuthStore.getState().connectionStatus !== 'connected')
-          return;
-        lock.current = true;
-        setBusy(true);
-        try {
-          const answer = await resetGrantOperations.run(key, authIndex, selected);
-          if (!current()) return;
-          showNotification(
-            t(`claude_reset.${answer.unresolved ? 'unknown' : answer.code}`),
-            !answer.unresolved && (answer.code === 'reset' || answer.code === 'already_used')
-              ? 'success'
-              : 'error'
-          );
-        } catch {
-          if (!current()) return;
-          const unresolved = resetGrantOperations.inspect(key);
-          showNotification(
-            t(`claude_reset.${unresolved && !unresolved.code ? 'unknown' : 'blocked'}`),
-            'error'
-          );
-        } finally {
-          lock.current = false;
-          // A concurrent page-wide refresh can invalidate this read generation.
-          // Release the local lock regardless, but never refresh a replacement account.
-          setBusy(false);
-          setReload((value) => value + 1);
-          if (current()) onRefresh();
-        }
-      },
+      onConfirm: () => (current() ? perform('claim', version) : undefined),
     });
   };
   return {
@@ -115,7 +125,16 @@ export function useClaudeResetGrants(
     busy,
     blocked,
     confirm,
-    message: pending ? (expired ? 'expired' : 'unknown') : message,
+    syncBlocked,
+    sync: () => {
+      if (!syncBlocked) void perform('sync', generation.current);
+    },
+    syncLabel: sync?.pending ? 'sync_retry' : 'sync',
+    message: pending
+      ? expired
+        ? 'expired'
+        : 'unknown'
+      : resetGrantMessage(operation, sync) || message,
     buttonLabel: pending ? 'retry' : 'use',
   };
 }

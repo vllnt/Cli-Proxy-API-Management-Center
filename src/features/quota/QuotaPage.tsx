@@ -422,6 +422,10 @@ export function QuotaPage() {
                 resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
                 entranceDelayMs={cardEntranceDelay(index)}
                 onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+                onRoutingRefresh={() => {
+                  void loadFiles();
+                  void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type]);
+                }}
                 onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
               />
             ))}
