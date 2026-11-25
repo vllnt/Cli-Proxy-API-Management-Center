@@ -39,6 +39,7 @@ export type QuotaCardProps = {
   /** 首屏级联入场延迟；null = 不入场（切 tab / 翻页 / 刷新新挂载的卡片）。 */
   entranceDelayMs?: number | null;
   onRefresh: () => void;
+  onRoutingRefresh?: () => void;
   onReset: () => void;
 };
 
@@ -51,6 +52,7 @@ export function QuotaCard(props: QuotaCardProps) {
     resetting,
     entranceDelayMs,
     onRefresh,
+    onRoutingRefresh,
     onReset,
   } = props;
   const { t } = useTranslation();
@@ -75,7 +77,7 @@ export function QuotaCard(props: QuotaCardProps) {
     entry.type === 'claude' && status !== 'idle',
     !canRefresh || loading || resetting,
     quota,
-    onRefresh
+    onRoutingRefresh ?? onRefresh
   );
   const iconSrc = getAuthFileIcon(entry.type, resolvedTheme);
   const typeLabel = getTypeLabel(t, entry.type);
@@ -117,7 +119,7 @@ export function QuotaCard(props: QuotaCardProps) {
       </header>
 
       <div className={styles.body}>
-        {entry.type === 'claude' && status === 'success' && (
+        {entry.type === 'claude' && status !== 'idle' && (
           <>
             <div className={quotaClasses.codexPlan}>
               <span className={quotaClasses.codexPlanItem}>
@@ -126,7 +128,14 @@ export function QuotaCard(props: QuotaCardProps) {
               </span>
             </div>
             {claudeReset.message && (
-              <div role="status" className={quotaClasses.codexResetCreditsError}>
+              <div
+                role="status"
+                className={
+                  claudeReset.message.endsWith('_synced')
+                    ? quotaClasses.quotaMessage
+                    : quotaClasses.codexResetCreditsError
+                }
+              >
                 {t(`claude_reset.${claudeReset.message}`)}
               </div>
             )}
@@ -166,16 +175,34 @@ export function QuotaCard(props: QuotaCardProps) {
       {status !== 'idle' && (
         <footer className={styles.actionRow}>
           {entry.type === 'claude' && (
-            <button
-              type="button"
-              className={styles.actionPill}
-              disabled={claudeReset.blocked}
-              onClick={claudeReset.confirm}
-              title={t(`claude_reset.${claudeReset.buttonLabel}`)}
-            >
-              <IconRefreshCw size={13} className={claudeReset.busy ? styles.spinning : undefined} />
-              {t(`claude_reset.${claudeReset.buttonLabel}`)}
-            </button>
+            <>
+              <button
+                type="button"
+                className={styles.actionPill}
+                disabled={claudeReset.blocked}
+                onClick={claudeReset.confirm}
+                title={t(`claude_reset.${claudeReset.buttonLabel}`)}
+              >
+                <IconRefreshCw
+                  size={13}
+                  className={claudeReset.busy ? styles.spinning : undefined}
+                />
+                {t(`claude_reset.${claudeReset.buttonLabel}`)}
+              </button>
+              <button
+                type="button"
+                className={styles.actionPill}
+                disabled={claudeReset.syncBlocked}
+                onClick={claudeReset.sync}
+                title={t('claude_reset.sync_hint')}
+              >
+                <IconRefreshCw
+                  size={13}
+                  className={claudeReset.busy ? styles.spinning : undefined}
+                />
+                {t(`claude_reset.${claudeReset.syncLabel}`)}
+              </button>
+            </>
           )}
           {showReset && (
             <button

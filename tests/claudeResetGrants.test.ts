@@ -159,6 +159,12 @@ function setup() {
       ids.push(id);
       throw new AnthropicResetGrantUnknownOutcome();
     },
+    reconcile: async () => ({
+      outcome: 'unchanged' as const,
+      persistence: 'ok' as const,
+      remainingQuotaBlocks: 0,
+      observedAt: '2026-11-25T00:00:00Z',
+    }),
   };
   return {
     deps,
@@ -237,6 +243,7 @@ test('a retry refusal keeps the ambiguous original operation open', async () => 
   expect(await operations.run('account', 'a', grant.id)).toEqual({
     code: 'already_used',
     unresolved: false,
+    syncPending: false,
   });
   expect(h.ids).toEqual(['request-1', 'request-1', 'request-1']);
 });
